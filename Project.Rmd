@@ -1,0 +1,685 @@
+---
+title: "R Notebook"
+output:
+  html_document:
+    df_print: paged
+  html_notebook: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+if (!require("ggplot2")) {
+   install.packages("ggplot2", dependencies = TRUE)
+   library(ggplot2)
+}
+
+if (!require("ggbiplot")) {
+  library(devtools)
+  install_github("vqv/ggbiplot")
+  library(ggbiplot)
+}
+
+if (!require("randomForest")) {
+   install.packages("randomForest", dependencies = TRUE)
+   library(randomForest)
+}
+
+if (!require('devtools')) {
+  install.packages('devtools', dependencies = TRUE)
+  library('devtools')
+}
+
+if (!require('caret')) {
+  install.packages('caret', dependencies = TRUE)
+  library('caret')
+}
+
+if (!require("lubridate")) {
+  install.packages("lubridate", dependencies = TRUE)
+  library("lubridate")
+}
+
+if (!require("dbplyr")) {
+   install.packages("dbplyr", dependencies = TRUE)
+   library(dbplyr)
+}
+
+if (!require("psych")) {
+  install.packages("psych", dependencies = TRUE)
+  library("psych")
+}
+
+if (!require("GPArotation")) {
+  install.packages("GPArotation", dependencies = TRUE)
+  library("GPArotation")
+}
+
+if (!require("Rcpp")) {
+  install.packages("Rcpp", dependencies = TRUE)
+  library(Rcpp)
+}
+
+if (!require("utils")) {
+  install.packages("utils", dependencies = TRUE)
+  library(utils)
+}
+if (!require("R6")) {
+  install.packages("R6", dependencies = TRUE)
+  library(R6)
+}
+
+if (!require("BH")) {
+  install.packages("BH", dependencies = TRUE)
+  library(BH)
+}
+
+if (!require("ggalt")) {
+  install.packages("ggalt", dependencies = TRUE)
+  library("ggalt")
+}
+
+if (!require("ggfortify")) {
+  install.packages("ggfortify", dependencies = TRUE)
+  library("ggfortify")
+}
+
+if (!require("corrplot")) {
+  install.packages("corrplot", dependencies = TRUE)
+  library("corrplot")
+}
+
+if(!require("plotrix")){
+  install.packages("plotrix", dependencies = TRUE)
+  library("plotrix")
+}
+
+if(!require("RColorBrewer")){
+  install.packages("RColorBrewer", dependencies = TRUE)
+  library("RColorBrewer")
+}
+
+if(!require("tidyverse")){
+  install.packages("tidyverse", dependencies = TRUE)
+  library("tidyverse")
+}
+
+if (!require("readxl")){
+    install.packages("readxl", dependencies = TRUE)
+    library("readxl")
+}
+
+if (!require("pROC")){
+    install.packages("pROC", dependencies = TRUE)
+    library("pROC")
+}
+
+if (!require("ISLR")){
+  install.packages("ISLR", dependencies = TRUE)
+  library("ISLR")
+}
+
+if (!require("MASS")){
+  install.packages("MASS", dependencies = TRUE)
+  library("MASS")
+}
+
+if (!require("glmnet")){
+  install.packages("glmnet", dependencies = TRUE)
+  library("glmnet")
+}
+
+if (!require("pls")){
+  install.packages("pls", dependencies = TRUE)
+  library("pls")
+}
+
+if (!require("foreign")){
+  install.packages("foreign", dependencies = TRUE)
+  library("foreign")
+}
+
+if (!require("factoextra")){
+  install.packages("factoextra", dependencies = TRUE)
+  library("factoextra")
+}
+```
+
+#Data Input and Cleaning
+
+```{r}
+# Read the data
+Data <- read_xlsx("~Irene/Desktop/Fall 2019/ECON-4280/Final Project/crx.xlsx")
+```
+
+```{r}
+# Filter the data
+# Remove all data with "?"
+i <- 1
+while (i < 690){
+  if ("?" %in% Data[i,] == TRUE){
+    Data <- Data[-i,]
+    i <- i-1
+  }
+  i <- i+1
+}
+```
+
+After data cleaning process, the row with missing values are deleted and the number of entries decreases from 690 to 653.
+
+# Data Description
+
+A1: Gender "a" for male & "b" for female
+A2: Age
+A3: Debt
+A4: MaritalStatus
+A5: BankCustomer
+A6: EducationLevel
+A7: Ethnicity
+A8: YearsEmployed
+A9: PriorDefault
+A10: Employed
+A11: CreditScore
+A12: DriversLicense
+A13: Citizen
+A14: ZipCode
+A15: Income
+A16: Approved
+
+```{r}
+# Transform the data type from 'Character' to 'Numeric'
+Age <- as.numeric(Data$Age)
+Debt <- as.numeric(Data$Debt)
+YearsEmployed <- as.numeric(Data$YearsEmployed)
+CreditScore <- as.numeric(Data$CreditScore)
+Income <- as.numeric(Data$Income)
+
+# Transform the data type from 'Character' to 'Factor'
+MaritalStatus <- as.factor(Data$MaritalStatus)
+DriversLicense <- as.factor(Data$DriversLicense)
+Citizen <- as.factor(Data$Citizen)
+ZipCode <- as.factor(Data$ZipCode)
+
+# Recombine into a new dataframe
+
+New_Data <- cbind.data.frame(Data$Gender, Age, Debt, Data$MaritalStatus, Data$BankCustomer, Data$EducationLevel, Data$Ethnicity, YearsEmployed, Data$PriorDefault, Data$Employed, CreditScore, Data$DriversLicense, Data$Citizen, Income, Data$Approved)
+
+# Change binary factors into 0 and 1
+# Gender: male for 1, female for 0
+New_Data$`Data$Gender`<- as.numeric(New_Data$`Data$Gender`)
+New_Data$`Data$Gender`[New_Data$`Data$Gender`==2] <- 0
+
+# PriorDefault: t for 1, f for 0
+New_Data$`Data$PriorDefault` <- as.numeric(New_Data$`Data$PriorDefault`)
+New_Data$`Data$PriorDefault`[New_Data$`Data$PriorDefault`==1] <- 0
+New_Data$`Data$PriorDefault`[New_Data$`Data$PriorDefault`==2] <- 1
+
+# Employed: t for 1, f for 0
+New_Data$`Data$Employed` <- as.numeric(New_Data$`Data$Employed`)
+New_Data$`Data$Employed`[New_Data$`Data$Employed`==1] <- 0
+New_Data$`Data$Employed`[New_Data$`Data$Employed`==2] <- 1
+
+# Driver Liscense: t for 1, f for 0
+New_Data$`Data$DriversLicense` <- as.numeric(New_Data$`Data$DriversLicense`)
+New_Data$`Data$DriversLicense`[New_Data$`Data$DriversLicense` == 1] <- 0
+New_Data$`Data$DriversLicense`[New_Data$`Data$DriversLicense` == 2] <- 1
+
+New_Data2 <- New_Data
+
+# Normalization
+New_Data2$Age <- scale(New_Data2$Age, center = TRUE, scale = TRUE)
+New_Data2$Debt <- scale(New_Data2$Debt, center = TRUE, scale = TRUE)
+New_Data2$Income <- scale(New_Data2$Income, center = TRUE, scale = TRUE)
+New_Data2$CreditScore <- scale(New_Data2$CreditScore, center = TRUE, scale = TRUE)
+New_Data2$YearsEmployed <- scale(New_Data2$YearsEmployed, center = TRUE, scale = TRUE)
+
+# For approved or not, + for 1 and - for 0
+Approved <- as.numeric(New_Data2$`Data$Approved`)
+Approved[Approved == 1] <- 0
+Approved[Approved == 2] <- 1
+New_Data2 <- New_Data2[,-15]
+New_Data2 <- cbind.data.frame(New_Data2, Approved)
+```
+
+```{r}
+boxplot(New_Data[,-15], main="Feature Distributions before Normalization")
+boxplot(New_Data2[,-15], main="Feature Distributions before Normalization")
+```
+
+```{r}
+# Distribution for Age
+hist(New_Data$Age, main = 'Distribution of Age before Normalization', xlab = 'Age', ylab = 'Frequency', col = 'pink2')
+hist(New_Data2$Age, main = 'Distribution of Age after Normalization', xlab = 'Age', ylab = 'Frequency', col = 'pink2')
+
+#Distribution for Debt
+hist(New_Data$Debt, main = 'Distribution of Debt before Normalization', xlab = 'Debt', ylab = 'Frequency', col = 'aquamarine3')
+hist(New_Data2$Debt, main = 'Distribution of Debt after Normalization', xlab = 'Debt', ylab = 'Frequency', col = 'aquamarine3')
+
+#Distribution for Income
+hist(New_Data$Income, main = 'Distribution of Income before Normalization', xlab = 'Income', ylab = 'Frequency', col = 'cadetblue1')
+hist(New_Data2$Income, main = 'Distribution of Income after Normalization', xlab = 'Income', ylab = 'Frequency', col = 'cadetblue1')
+
+#Distribution for CreditScore
+hist(New_Data$CreditScore, main = 'Distribution of CreditScore before Normalization', xlab = 'CreditScore', ylab = 'Frequency', col = 'coral2')
+hist(New_Data2$CreditScore, main = 'Distribution of CreditScore after Normalization', xlab = 'CreditScore', ylab = 'Frequency', col = 'coral2')
+
+#Distribution for YearsEmployed
+hist(New_Data$YearsEmployed, main = 'Distribution of YearsEmployed before Normalization', xlab = 'YearsEmployed', ylab = 'Frequency', col = 'cornflowerblue')
+hist(New_Data2$YearsEmployed, main = 'Distribution of YearsEmployed after Normalization', xlab = 'YearsEmployed', ylab = 'Frequency', col = 'cornflowerblue')
+```
+
+Divide the data
+
+This section reads in the the training data and create the “internal” training and test set. The “internal” training data was randomly divided into a set consisting of 80% training and 20% testing.
+
+```{r}
+# Split the data into training and testing sets
+# train.size will be the number of data in the training set n <- nrow(st_train)
+train.size <- ceiling(nrow(New_Data2)*0.8)
+# Set random seed to ensure reproducibility
+set.seed(1)
+train <- sample(1:nrow(New_Data2),train.size)
+data_train <- New_Data2[train, ] # The training data is just the training rows
+data_train2 <- data_train[,c(-15)]
+trainclass <- data_train[,15]
+data_test <- New_Data2[-train, ] # Using -train gives us all rows except the training rows.
+data_test2 <- data_test[,c(-15)]
+testclass <- data_test[,15]
+```
+
+# Visualisation of the relationship
+
+Using scatter plots to visualise linear relationships between the response and each predictor variable.
+
+```{r}
+# Education Level
+scatter.smooth(x=data_train$`Data$EducationLevel`, y=data_train$Approved, main="Education Level v.s. Aprroved", xlab="Education Level", ylab = "Approved")  
+  
+```
+
+```{r}
+# Create new dataset that contains only binary and numeric factors
+new_data_train <- data_train[,c(1,2,3,8,9,10,11,12,14,15)]
+new_data_test <- data_test[,c(1,2,3,8,9,10,11,12,14,15)]
+new_data_train2 <- data_train2[,c(1,2,3,8,9,10,11,12,14)]
+new_data_test2 <- data_test2[,c(1,2,3,8,9,10,11,12,14)]
+```
+
+Draw PCA Analysis
+
+```{r}
+# Generate pca analysis
+train.df <- as.data.frame(new_data_train2)
+my.pca <- prcomp(train.df)
+# Scree plot
+plot(my.pca, type="l")
+```
+
+```{r}
+# Biplot
+# Calculate the scale limits
+t <- max(abs(my.pca$x[,1:2]))
+# Create the biplot using ggbiplot
+p <- ggbiplot::ggbiplot(my.pca, choices=c(1,2), alpha=.25, varname.adjust=1.5, 
+              groups = as.factor(trainclass))
+# Add a title and set the scale limits
+p + ggtitle('')
+```
+
+According to the pca plot, we can say the vectors of feature “Income” and “YearsEmployed” are longer than other. So we can say there are important features that will affect predictions positively.
+
+## Feature Selection Model
+
+# Model 1: Linear Regression Model
+
+```{r, warning=FALSE}
+# Linear Regression Model
+fit.lm <- lm(new_data_train$Approved ~., data = new_data_train) 
+pred.lm <- predict(fit.lm, new_data_test)
+err.lm <- mean((new_data_test$Approved - pred.lm)^2) 
+print(err.lm)
+summary(fit.lm)
+```
+
+Using p Value To Check For Statistical Significance
+
+We can consider a linear model to be statistically significant only when all these p-Values are less than the pre-determined statistical significance level of 0.05. This can visually interpreted by the significance stars at the end of the row against each X variable. The more the stars beside the variable’s p-Value, the more significant the variable.
+
+According to the summary above, it is easily found that PriorDefault, Employed, and Income are the most significant variables, following by CreditScore and YearsEmployed.
+
+# Model 2: Logistic Regression Model
+
+```{r,warning=FALSE}
+# Logistic Regression Model
+fit.glm <- glm(new_data_train$Approved ~., data = new_data_train, family = 'binomial')
+pred.glm <- predict(fit.glm, new_data_test)
+err.glm <- mean((new_data_test$Approved - pred.glm)^2)
+print(err.glm)
+summary(fit.glm)
+```
+
+We see the deviance residuals, which are a measure of model fit. This part of output shows the distribution of the deviance residuals for individual cases used in the model. 
+
+# Model 3: Wrapper
+```{r,warning=FALSE,message=FALSE}
+# Make a dataframe with labels since glm likes data frames
+morttrain1 <- new_data_train2
+sc_train.df<-as.data.frame(morttrain1)
+my.data<-cbind(trainclass,sc_train.df)
+morttest1 <- new_data_test2
+# Create a list to store all auc value
+auclist <- c()
+# Create a list to store number of features left
+featurelist <- c()
+# Fit logistic regression model using glm
+# Formula uses all of the features
+myaucLR0 <- 0.5
+myaucLR <- 1
+
+itr <- 0
+while(itr < 9){
+  sc_train.df <-as.data.frame(morttrain1)
+  my.data<-cbind(trainclass,sc_train.df)
+  glmfit <- glm(trainclass~. ,data=my.data,family="binomial")
+  index <- which.min(abs(glmfit$coefficients)) - 1
+  mypredictlr<- predict(glmfit,as.data.frame(morttest1),type="response")
+  if(itr != 0){
+  myaucLR0 <- myaucLR
+  }
+  myrocLR <- pROC::roc(testclass,mypredictlr, levels=c(0,1))
+  myaucLR <- pROC::auc(myrocLR)
+  itr <- itr + 1
+  morttrain1 <- morttrain1[,-index]
+  morttest1 <- morttest1[,-index]
+  auclist <- append(auclist, myaucLR)
+  featurelist <- append(featurelist, (9-itr))
+}
+```
+
+```{r}
+#plot AUC graph
+auc_feature <- cbind(featurelist, auclist)
+plot(auc_feature, main = "AUC Accuray VS. # of Features Selected",
+xlab = "# of Features Selected", ylab = "AUC Accuray", col = "blue")
+```
+
+According to the graph above, I can find that 4 features selected that AUC peaks. Then I
+pick 4 features, because these features show most important (largest weight) that can affect our predictions positively to a large extent. Then we rerun the loop to create a new internal trainingg data set with 4 selected features.
+
+```{r,warning=FALSE,message=FALSE}
+# Make a dataframe with labels since glm likes data frames
+morttrain1 <- new_data_train2
+sc_train.df<-as.data.frame(morttrain1)
+my.data<-cbind(trainclass,sc_train.df)
+morttest1 <- new_data_test2
+# Create a list to store all auc value
+auclist <- c()
+# Create a list to store number of features left
+featurelist <- c()
+# Fit logistic regression model using glm
+# Formula uses all of the features
+myaucLR0 <- 0.5
+myaucLR <- 1
+
+itr <- 0
+while(itr < 5){
+  sc_train.df <-as.data.frame(morttrain1)
+  my.data<-cbind(trainclass,sc_train.df)
+  glmfit <- glm(trainclass~. ,data=my.data,family="binomial")
+  index <- which.min(abs(glmfit$coefficients)) - 1
+  mypredictlr<- predict(glmfit,as.data.frame(morttest1),type="response")
+  if(itr != 0){
+  myaucLR0 <- myaucLR
+  }
+  myrocLR <- pROC::roc(testclass,mypredictlr, levels=c(0,1))
+  myaucLR <- pROC::auc(myrocLR)
+  itr <- itr + 1
+  morttrain1 <- morttrain1[,-index]
+  morttest1 <- morttest1[,-index]
+}
+```
+
+Draw PCA analysis after feature selection
+
+```{r}
+# Generate pca analysis
+morttrain.df <- as.data.frame(morttrain1)
+my.pca <- prcomp(morttrain.df)
+# Biplot
+# Calculate the scale limits
+t <- max(abs(my.pca$x[,1:2]))
+# Create the biplot using ggbiplot
+p <- ggbiplot::ggbiplot(my.pca, choices=c(1,2), alpha=.25, varname.adjust=1.5, 
+              groups = as.factor(trainclass))
+# Add a title and set the scale limits
+p + ggtitle('After Feature Selection')
+```
+
+Use New Model to Check AUC with Random Forest Method
+
+```{r,warning=FALSE,message=FALSE}
+cols <- c("PriorDefault","Employed","CreditScore","Income")
+colnames(morttrain1) <- cols
+colnames(morttest1) <- cols
+
+rf <- randomForest::randomForest(trainclass~., data=morttrain1, 
+                                 importance=TRUE,  ntree=250,nseed=20)
+mypredictlr <- predict(rf, morttrain1)
+summary(mypredictlr)
+ranking<-as.numeric(mypredictlr)
+mynewroc <- pROC::roc(trainclass,ranking)
+# compute AUC=Area under ROC curve
+myauc <- pROC::auc(mynewroc)
+myauc
+
+#Predict test dataset
+mypredictlr <- predict(rf, morttest1)
+summary(mypredictlr)
+ranking<-as.numeric(mypredictlr)
+mynewroc <- pROC::roc(testclass,ranking)
+# compute AUC=Area under ROC curve
+myauc <- pROC::auc(mynewroc)
+myauc
+```
+
+Because of few feature selection, the accuracy is lower than that of other models. We cannot delete features in this way.
+
+# Model 4: Factor Analysis
+
+According the previous PCA graph,the "elbow" of the line around x=2 to x=5. So we pick factor number as 5. Sutaible but larger factor number can provide more detailed analysis. 
+
+```{r}
+cols <- c("Gender","Age","Debt","YearsEmployed","PriorDefault","Employed","CreditScore",
+          "DriversLicense","Income")
+colnames(new_data_train2) <- cols
+new_data_train3 <- as.data.frame(new_data_train2)
+EFAresult1 = factanal(~ ., data=new_data_train3, factors = 5, rotation = "varimax",
+                      na.action = na.exclude)
+EFAresult1
+```
+
+First, we can look at the sums of squared (SS) loadings; these are the eigenvalues, or the variance in all variables which is accounted for by that factor (i.e., the eigenvalue/# of variables = proportion variance). If a factor has a “high” SS loading (i.e., eigenvalue), then it is helping to explain the variances in the variables.
+
+In the factanal() output, the factors are ordered by their eigenvalues, with higher eigenvalues first. A general rule is to choose the eigenvalue larger than 1. Here, factor 1 and factor 2appear to be more important. 
+
+```{r}
+# Use 8 as the number of factors
+fa.promax<-fa(new_data_train3,nfactors=5,rotate="promax",fm="pa")
+# Lets look at the “reduced” data.
+pairs.panels(fa.promax$scores)
+```
+
+The scatter plot of matrices shows the distributions for four factor groups. But there are also unique factors too. The factors only capture common variance. There may be quite a bit of stuff leftover.
+
+```{r}
+# Factor Analysis Diagram New York State
+fa.diagram(fa.promax,simple=TRUE,cex=0.9, main = "Factor Analysis")
+```
+
+All social determinants are reduced to 5 factor groups. It’s easier to find the correlation between one factor group and the rate of death despairs, instead of the correlation between one single social determinants and the rate of death despairs.
+
+## Prediction Model
+
+# Model 1: LDA Model
+
+Step1: train model through training dataset
+```{r}
+# Fit LDA model
+set.seed(1)
+fit <-lda(new_data_train2,trainclass,prior=c(1,1)/2)
+# Predict training data
+mypredictlda<-predict(fit,new_data_train2)
+summary(mypredictlda)
+```
+
+```{r, warning=FALSE,message=FALSE}
+# Get ranking of data for use in AUC caluculation.
+ranking<-as.numeric(mypredictlda$x)
+# Compute ROC results
+myroc <- pROC::roc(trainclass,ranking, levels=c(0,1))
+# compute AUC=Area under ROC curve
+myauc <- pROC::auc(myroc)
+myauc
+```
+
+```{r}
+# Calcuate confusion matrix to see balanced accuracy
+confusionMatrix(table(trainclass,mypredictlda$class))
+rnorm(1)
+```
+
+The balanced training accuracty was 86.42%. and the AUC is 93.33%.
+
+Step 2: predict test dataset using training model
+```{r}
+# Predict testing data
+mypredictlda<-predict(fit,new_data_test2)
+summary(mypredictlda)
+```
+
+```{r,message=FALSE}
+# Get ranking of data for use in AUC caluculation.
+ranking<-as.numeric(mypredictlda$x)
+# Compute ROC results
+myroc <- pROC::roc(testclass,ranking, levels=c(0,1))
+# compute AUC=Area under ROC curve
+myauc <- pROC::auc(myroc)
+myauc
+```
+
+```{r}
+# Calcuate confusion matrix to see balanced accuracy.
+confusionMatrix(table(testclass,mypredictlda$class))
+```
+
+The balanced testing accuracty was 89.93%. and the AUC is 86.92%.
+
+# Model 2: Logistic Regression Model with Lasso
+
+Step1: train model through training dataset
+
+```{r}
+# Fit logistic regression model
+new_data_train2<- as.matrix(new_data_train2)
+glmnetfit <-glmnet(new_data_train2,trainclass,family="binomial",alpha=1,nlambda=100,
+                   standardize=FALSE)
+#Predict training data with Lasso
+#Slambda is the value of lambda that you would like to predict the response
+slambda=.05
+mypredictglmnet<-predict(object=glmnetfit,s=slambda,newx=new_data_train2)
+summary(mypredictglmnet)
+```
+
+```{r,message=FALSE}
+# Get ranking of data for use in AUC caluculation.
+rankingglmnet<-as.numeric(mypredictglmnet)
+# Compute ROC results
+myrocGLMnet <- pROC::roc(trainclass,rankingglmnet, levels=c(0,1))
+# Compute AUC=Area under ROC curve
+myaucGLMnet <- pROC::auc(myrocGLMnet)
+myaucGLMnet
+```
+
+```{r}
+# Calcuate confusion matrix to see balanced accuracy.
+confusionMatrix(data = as.factor(as.integer(rankingglmnet>0.5)), reference = as.factor(trainclass))
+```
+
+The balanced training accuracty was 84.13%. and the AUC is 93.12%.
+
+Step 2: predict test dataset using training model
+
+```{r}
+#Slambda is the value of lambda that you would like to predict the response
+new_data_test2 <- as.matrix(new_data_test2)
+slambda=.05
+mypredictglmnet<-predict(object=glmnetfit,s=slambda,newx=new_data_test2)
+summary(mypredictglmnet)
+```
+
+```{r}
+# Get ranking of data for use in AUC caluculation.
+rankingglmnet<-as.numeric(mypredictglmnet)
+# Compute ROC results
+myrocGLMnet <- pROC::roc(testclass,rankingglmnet, levels=c(0,1))
+# Compute AUC=Area under ROC curve
+myaucGLMnet <- pROC::auc(myrocGLMnet)
+myaucGLMnet
+```
+
+```{r}
+# Calcuate confusion matrix to see balanced accuracy.
+confusionMatrix(data = as.factor(as.integer(rankingglmnet>0.5)), reference = as.factor(testclass))
+```
+
+The balanced testing accuracty was 81.54%. and the AUC is 90.14%.
+
+# Model 3: Random Forest 
+
+Step1: train model through training dataset
+
+```{r}
+cols <- c("Gender","Age","Debt","YearsEmployed","PriorDefault","Employed","CreditScore",
+          "DriversLicense","Income")
+colnames(new_data_train2) <- cols
+rf <- randomForest::randomForest(trainclass~., data=new_data_train2, importance=TRUE, 
+                                 ntree=250, nseed=20)
+mypredictlr <- predict(rf, new_data_train2)
+summary(mypredictlr)
+```
+
+```{r,message=FALSE}
+ranking<-as.numeric(mypredictlr)
+mynewroc <- pROC::roc(trainclass,ranking)
+# compute AUC=Area under ROC curve
+myauc <- pROC::auc(mynewroc)
+myauc
+```
+
+The AUC is 99.86%.
+
+Step 2: predict test dataset using training model
+
+```{r}
+colnames(new_data_test2) <- cols
+mypredictlr <- predict(rf, new_data_test2)
+summary(mypredictlr)
+```
+
+```{r,message=FALSE}
+ranking<-as.numeric(mypredictlr)
+mynewroc <- pROC::roc(testclass,ranking)
+# compute AUC=Area under ROC curve
+myauc <- pROC::auc(mynewroc)
+myauc
+```
+
+The AUC is 92.37%.
+
+# Compare Three Predicting Models
+
+```{r}
+ggroc(list(LDA = myroc, LASSO=myrocGLMnet, RandomForest=mynewroc))+
+  labs(color = "Method")+
+  ggtitle("Comparison of test accurcy on Chems-R-Us data")
+```
+
